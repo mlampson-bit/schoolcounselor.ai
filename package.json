@@ -1,6 +1,6 @@
 {
   "name": "schoolcounselor",
-  "public": true,
+  "private": true,
   "version": "0.1.0",
   "scripts": {
     "dev": "next dev",
