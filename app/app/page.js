@@ -36,7 +36,7 @@ const requirementsByProgram = {
       description: "Core computer science courses required for the major.",
     },
   ],
-  business: [
+   business: [
     {
       id: "quant",
       name: "Quantitative Skills",
@@ -97,8 +97,48 @@ function findCoursesFromText(text) {
   const q = normalize(text);
   if (!q) return [];
 
+  const exactCodes = sampleCourses.filter((course) => q.includes(course.code.toLowerCase()));
+  if (exactCodes.length) return exactCodes;
+
+  return sampleCourses.filter((course) => {
+    const haystack = `${course.code} ${course.title} ${course.tags.join(" ")}`.toLowerCase();
+    return q.split(/[\n,]+/).some((part) => haystack.includes(part.trim()));
+  });
+}
+
+function allocateCourses(requirements, selectedCourses) {
+  const remaining = requirements.map((req) => ({ ...req, remaining: req.creditsNeeded, courses: [] }));
+  const unassigned = [];
+
+  for (const course of selectedCourses) {
+    const match = remaining
+      .filter((req) => course.tags.some((tag) => req.acceptedTags.includes(tag)) && req.remaining > 0)
+      .sort((a, b) => b.remaining - a.remaining)[0];
+
+    if (match) {
+      match.courses.push(course);
+      match.remaining = Math.max(0, match.remaining - course.credits);
+    } else {
+      unassigned.push(course);
+    }
+  }
+
+  return { remaining, unassigned };
+}
+
+function suggestCourses(requirements, allocation, selectedCourses) {
+  const selectedCodes = new Set(selectedCourses.map((c) => c.code));
+  const suggestions = [];
+
+  allocation.remaining.forEach((req) => {
+    if (req.remaining <= 0) return;
+
+    const matches = sampleCourses
+      .filter(
+        (course) =>
+          !selectedCodes.has(course.code) &&
           course.tags.some((tag) => req.acceptedTags.includes(tag))
-  )
+      )
       .slice(0, 3);
 
     suggestions.push({ requirement: req.name, remaining: req.remaining, matches });
@@ -241,7 +281,7 @@ export default function Home() {
 
         <div className="card">
           <h2>How to make it real</h2>
- <ul>
+          <ul>
             <li>Store official degree requirements in a database.</li>
             <li>Add transcript upload and transfer equivalency logic.</li>
             <li>Connect an AI API for rule extraction and explanations.</li>
